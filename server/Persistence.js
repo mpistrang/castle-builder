@@ -1,79 +1,70 @@
-const fs = require('fs');
-const path = require('path');
+const Redis = require('ioredis');
 const config = require('./config');
+
+const KEY_PREFIX = 'castle:';
 
 class Persistence {
   constructor() {
-    this.dataDir = path.resolve(config.DATA_DIR);
-    this._ensureDataDir();
-  }
-
-  /**
-   * Create the data directory if it doesn't already exist.
-   */
-  _ensureDataDir() {
-    try {
-      fs.mkdirSync(this.dataDir, { recursive: true });
-    } catch (err) {
-      // Only throw if it's something other than "already exists"
-      if (err.code !== 'EEXIST') {
-        console.error(`Failed to create data directory: ${this.dataDir}`, err);
-        throw err;
-      }
+    if (config.REDIS_URL) {
+      this.redis = new Redis(config.REDIS_URL);
+      this.redis.on('connect', () => console.log('Connected to Redis'));
+      this.redis.on('error', (err) => console.error('Redis error:', err.message));
+    } else {
+      console.warn('REDIS_URL not set — persistence disabled');
+      this.redis = null;
     }
   }
 
   /**
-   * Return the file path for a given room code.
+   * Save a castle grid to Redis with a TTL.
    */
-  _filePath(roomCode) {
-    return path.join(this.dataDir, `${roomCode}.json`);
-  }
-
-  /**
-   * Save a castle grid to disk as JSON.
-   */
-  save(roomCode, grid) {
-    const filePath = this._filePath(roomCode);
+  async save(roomCode, grid) {
+    if (!this.redis) return;
     try {
-      const json = JSON.stringify(grid);
-      fs.writeFileSync(filePath, json, 'utf8');
+      await this.redis.set(
+        KEY_PREFIX + roomCode,
+        JSON.stringify(grid),
+        'EX',
+        config.ROOM_TTL_SECONDS
+      );
     } catch (err) {
-      console.error(`Failed to save castle for room ${roomCode}:`, err);
+      console.error(`Failed to save castle for room ${roomCode}:`, err.message);
     }
   }
 
   /**
-   * Load a castle grid from disk. Returns the parsed grid, or null if
-   * the file doesn't exist or contains invalid JSON.
+   * Load a castle grid from Redis. Returns the parsed grid, or null
+   * if the key doesn't exist or contains invalid JSON.
    */
-  load(roomCode) {
-    const filePath = this._filePath(roomCode);
+  async load(roomCode) {
+    if (!this.redis) return null;
     try {
-      const json = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(json);
+      const json = await this.redis.get(KEY_PREFIX + roomCode);
+      return json ? JSON.parse(json) : null;
     } catch (err) {
-      if (err.code === 'ENOENT') {
-        // No persisted data for this room — that's fine
-        return null;
-      }
-      // Bad JSON or other read error — log and treat as missing
-      console.error(`Failed to load castle for room ${roomCode}:`, err);
+      console.error(`Failed to load castle for room ${roomCode}:`, err.message);
       return null;
     }
   }
 
   /**
-   * Delete the persisted file for a room, if it exists.
+   * Delete the persisted data for a room.
    */
-  delete(roomCode) {
-    const filePath = this._filePath(roomCode);
+  async delete(roomCode) {
+    if (!this.redis) return;
     try {
-      fs.unlinkSync(filePath);
+      await this.redis.del(KEY_PREFIX + roomCode);
     } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.error(`Failed to delete castle file for room ${roomCode}:`, err);
-      }
+      console.error(`Failed to delete castle for room ${roomCode}:`, err.message);
+    }
+  }
+
+  /**
+   * Gracefully close the Redis connection.
+   */
+  async disconnect() {
+    if (this.redis) {
+      await this.redis.quit();
     }
   }
 }

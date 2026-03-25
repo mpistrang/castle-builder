@@ -32,9 +32,9 @@ io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
   // ── Create Room ─────────────────────────────────────────
-  socket.on('create-room', ({ roomCode, playerName }) => {
+  socket.on('create-room', async ({ roomCode, playerName }) => {
     try {
-      const room = Room.create(roomCode);
+      const room = await Room.create(roomCode);
       room.addPlayer(socket.id, playerName);
       socket.join(roomCode);
       socketRooms.set(socket.id, roomCode);
@@ -50,12 +50,12 @@ io.on('connection', (socket) => {
   });
 
   // ── Join Room ───────────────────────────────────────────
-  socket.on('join-room', ({ roomCode, playerName }) => {
+  socket.on('join-room', async ({ roomCode, playerName }) => {
     try {
       let room = Room.get(roomCode);
       if (!room) {
         // Try creating if it doesn't exist yet
-        room = Room.create(roomCode);
+        room = await Room.create(roomCode);
       }
 
       const player = room.addPlayer(socket.id, playerName);
@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Build / Destroy Action ──────────────────────────────
-  socket.on('action', ({ position, mode, brushSize }) => {
+  socket.on('action', async ({ position, mode, brushSize }) => {
     const roomCode = socketRooms.get(socket.id);
     if (!roomCode) return;
 
@@ -100,7 +100,7 @@ io.on('connection', (socket) => {
     }
 
     if (changedBlocks && changedBlocks.length > 0) {
-      room.save();
+      await room.save();
       io.in(roomCode).emit('castle-updated', {
         castle: room.castle.getGrid(),
         action: mode || 'build',
@@ -110,7 +110,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Clear All Blocks ──────────────────────────────────
-  socket.on('clear', () => {
+  socket.on('clear', async () => {
     const roomCode = socketRooms.get(socket.id);
     if (!roomCode) return;
 
@@ -118,7 +118,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     room.castle.clear();
-    room.save();
+    await room.save();
     io.in(roomCode).emit('castle-updated', {
       castle: room.castle.getGrid(),
       action: 'clear',
@@ -155,14 +155,14 @@ io.on('connection', (socket) => {
   });
 });
 
-function handleLeave(socket) {
+async function handleLeave(socket) {
   const roomCode = socketRooms.get(socket.id);
   if (!roomCode) return;
 
   const room = Room.get(roomCode);
   if (room) {
     const playerName = room.getPlayerName(socket.id);
-    room.removePlayer(socket.id);
+    await room.removePlayer(socket.id);
 
     socket.to(roomCode).emit('player-left', { playerName });
   }

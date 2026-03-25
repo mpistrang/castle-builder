@@ -212,9 +212,9 @@ class Castle {
     const allChanged = [];
     const half = Math.floor(brushSize / 2);
 
-    // Remove all blocks within the brush area below the player
-    for (let dx = -half; dx <= half; dx++) {
-      for (let dy = 1; dy <= brushSize; dy++) {
+    // Remove all blocks within the NxN brush area centered on the player
+    for (let dx = -half; dx < -half + brushSize; dx++) {
+      for (let dy = -half; dy < -half + brushSize; dy++) {
         const x = px + dx;
         const y = py + dy;
         if (!this.inBounds(x, y)) continue;
@@ -224,23 +224,6 @@ class Castle {
         allChanged.push({ x, y, type: null });
 
         const cascaded = this.cascadeRemove(x, y);
-        for (const c of cascaded) {
-          allChanged.push({ x: c.x, y: c.y, type: null });
-        }
-      }
-    }
-
-    // If nothing below, try at the player's position
-    if (allChanged.length === 0) {
-      for (let dx = -half; dx <= half; dx++) {
-        const x = px + dx;
-        if (!this.inBounds(x, py)) continue;
-        if (this.isEmpty(x, py)) continue;
-
-        this.setCell(x, py, null);
-        allChanged.push({ x, y: py, type: null });
-
-        const cascaded = this.cascadeRemove(x, py);
         for (const c of cascaded) {
           allChanged.push({ x: c.x, y: c.y, type: null });
         }

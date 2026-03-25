@@ -18,28 +18,16 @@ class Generator {
     const blocks = [];
     const half = Math.floor(brushSize / 2);
 
-    // Place blocks in a column (brushSize wide) below the player
-    for (let dx = -half; dx <= half; dx++) {
-      const x = px + dx;
-      for (let offset = 1; offset <= 2; offset++) {
-        const y = py + offset;
+    // Fill an NxN area centered on the player
+    for (let dx = -half; dx < -half + brushSize; dx++) {
+      for (let dy = -half; dy < -half + brushSize; dy++) {
+        const x = px + dx;
+        const y = py + dy;
         if (!castle.inBounds(x, y)) continue;
         if (!castle.isEmpty(x, y)) continue;
 
         const type = this._pickBlockType(castle, x, y);
         blocks.push({ x, y, type });
-      }
-    }
-
-    // If nothing below was available, try at the player's row
-    if (blocks.length === 0) {
-      for (let dx = -half; dx <= half; dx++) {
-        const x = px + dx;
-        if (!castle.inBounds(x, py)) continue;
-        if (!castle.isEmpty(x, py)) continue;
-
-        const type = this._pickBlockType(castle, x, py);
-        blocks.push({ x, y: py, type });
       }
     }
 

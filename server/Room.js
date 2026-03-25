@@ -27,7 +27,7 @@ class Room {
    * loads any persisted castle data, and registers the room.
    * Returns the Room instance, or throws on invalid/duplicate codes.
    */
-  static create(roomCode) {
+  static async create(roomCode) {
     if (!config.ALLOWED_ROOMS.includes(roomCode)) {
       throw new Error(`Room code "${roomCode}" is not in the allowlist`);
     }
@@ -37,7 +37,7 @@ class Room {
     }
 
     // Try to restore a previously-saved castle, otherwise start fresh
-    const savedGrid = persistence.load(roomCode);
+    const savedGrid = await persistence.load(roomCode);
     const castle = new Castle(config.GRID_WIDTH, config.GRID_HEIGHT);
 
     if (savedGrid) {
@@ -89,12 +89,12 @@ class Room {
    * Remove a player. If the room becomes empty, persist the castle
    * and remove the room from the active set.
    */
-  removePlayer(socketId) {
+  async removePlayer(socketId) {
     this.players.delete(socketId);
     this._lastActionTime.delete(socketId);
 
     if (this.players.size === 0) {
-      persistence.save(this.roomCode, this.castle.grid);
+      await persistence.save(this.roomCode, this.castle.grid);
       Room.remove(this.roomCode);
     }
   }
@@ -145,10 +145,10 @@ class Room {
   }
 
   /**
-   * Persist the current castle state to disk.
+   * Persist the current castle state to Redis.
    */
-  save() {
-    persistence.save(this.roomCode, this.castle.grid);
+  async save() {
+    await persistence.save(this.roomCode, this.castle.grid);
   }
 }
 

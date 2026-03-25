@@ -1,6 +1,5 @@
 node_modules/
 client/dist/
-server/data/*.json
 .DS_Store
 .claude/
 CLAUDE.md
