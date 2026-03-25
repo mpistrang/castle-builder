@@ -36,6 +36,22 @@ export class UIScene extends Phaser.Scene {
       color: '#f0c060',
     });
 
+    // ── Info button (top-left, after room code) ──────────
+    this.infoBtnBg = this.add.circle(MARGIN + 160, MARGIN + 10, 12, 0x335577)
+      .setStrokeStyle(2, 0x6699bb)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(MARGIN + 160, MARGIN + 10, '?', {
+      fontSize: '16px',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    this.infoBtnBg.on('pointerdown', () => this._toggleHelp());
+
+    // Help popup (hidden by default)
+    this._createHelpPopup(width, height);
+
     // ── Player list (top-left, below room code) ───────────
     this.playerListText = this.add.text(MARGIN, MARGIN + 28, '', {
       fontSize: '14px',
@@ -54,17 +70,11 @@ export class UIScene extends Phaser.Scene {
       .setStrokeStyle(3, 0xffffff)
       .setInteractive({ useHandCursor: true });
 
-    this.toggleText = this.add.text(btnX, btnY - 2, MODE_BUILD.toUpperCase(), {
+    this.toggleText = this.add.text(btnX, btnY, MODE_BUILD.toUpperCase(), {
       fontSize: '16px',
       fontFamily: 'monospace',
       fontStyle: 'bold',
       color: '#ffffff',
-    }).setOrigin(0.5);
-
-    this.toggleHint = this.add.text(btnX, btnY + 14, '(click to switch)', {
-      fontSize: '9px',
-      fontFamily: 'monospace',
-      color: '#cccccc',
     }).setOrigin(0.5);
 
     this.toggleBg.on('pointerdown', () => this._toggle());
@@ -93,7 +103,7 @@ export class UIScene extends Phaser.Scene {
     this.add.text(btnX, sliderY - 18, 'Brush Size', {
       fontSize: '11px',
       fontFamily: 'monospace',
-      color: '#aaaaaa',
+      color: '#dddddd',
     }).setOrigin(0.5);
 
     const sliderWidth = 100;
@@ -118,7 +128,7 @@ export class UIScene extends Phaser.Scene {
     this.sliderHandle = this.add.circle(sliderLeft, sliderY + 6, 8, 0xf0c060)
       .setInteractive({ useHandCursor: true, draggable: true });
 
-    this.brushSizeText = this.add.text(btnX, sliderY + 34, 'Size: 1', {
+    this.brushSizeText = this.add.text(btnX, sliderY + 36, 'Size: 1', {
       fontSize: '12px',
       fontFamily: 'monospace',
       color: '#f0c060',
@@ -225,5 +235,67 @@ export class UIScene extends Phaser.Scene {
     this.toggleBg.setFillStyle(isBuild ? COLOR_BUILD : COLOR_DESTROY);
     const icon = isBuild ? '+' : 'x';
     this.toggleText.setText(`${icon} ${this.currentMode.toUpperCase()}`);
+  }
+
+  _createHelpPopup(sceneWidth, sceneHeight) {
+    const popupW = 340;
+    const popupH = 260;
+    const px = sceneWidth / 2;
+    const py = sceneHeight / 2;
+
+    // Use a container so visibility toggles all children at once
+    this.helpContainer = this.add.container(0, 0);
+    this.helpContainer.setDepth(100);
+
+    // Dim overlay
+    const overlay = this.add.rectangle(sceneWidth / 2, sceneHeight / 2, sceneWidth, sceneHeight, 0x000000, 0.5)
+      .setInteractive();
+    overlay.on('pointerdown', () => this._toggleHelp());
+
+    // Panel background
+    const panel = this.add.rectangle(px, py, popupW, popupH, 0x1a1a2e)
+      .setStrokeStyle(2, 0xf0c060);
+
+    // Title
+    const title = this.add.text(px, py - popupH / 2 + 24, 'How to Play', {
+      fontSize: '20px',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      color: '#f0c060',
+    }).setOrigin(0.5);
+
+    // Instructions
+    const instructions = [
+      'Arrow keys    Move around the grid',
+      'Space         Build or destroy',
+      '',
+      'BUILD mode    Places blocks around you',
+      'DESTROY mode  Removes blocks around you',
+      '',
+      'Brush Size    Slider controls area size (1-5)',
+      'CLEAR ALL     Wipes the entire castle',
+    ];
+
+    const body = this.add.text(px - popupW / 2 + 24, py - popupH / 2 + 52, instructions.join('\n'), {
+      fontSize: '11px',
+      fontFamily: 'monospace',
+      color: '#cccccc',
+      lineSpacing: 4,
+    });
+
+    // Close hint
+    const closeHint = this.add.text(px, py + popupH / 2 - 20, 'click anywhere to close', {
+      fontSize: '10px',
+      fontFamily: 'monospace',
+      color: '#888888',
+    }).setOrigin(0.5);
+
+    this.helpContainer.add([overlay, panel, title, body, closeHint]);
+    this.helpContainer.setVisible(false);
+  }
+
+  _toggleHelp() {
+    const visible = !this.helpContainer.visible;
+    this.helpContainer.setVisible(visible);
   }
 }
