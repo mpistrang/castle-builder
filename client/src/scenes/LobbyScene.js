@@ -46,8 +46,7 @@ export class LobbyScene extends Phaser.Scene {
     this.playerNameField = this._createInputField(centerX, 280, 'YOUR NAME');
 
     // ── Buttons ────────────────────────────────────────────
-    this._createButton(centerX - 90, 370, 'CREATE', 0x4a8c5c, () => this._onCreate());
-    this._createButton(centerX + 90, 370, 'JOIN', 0x4a6a8c, () => this._onJoin());
+    this._createButton(centerX, 370, 'JOIN', 0x4a6a8c, () => this._onJoin());
 
     // ── Status text (connection feedback / errors) ─────────
     this.statusText = this.add.text(centerX, 440, '', {
