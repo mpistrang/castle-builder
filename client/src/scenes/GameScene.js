@@ -17,6 +17,15 @@ const SKY_COLOR_BOTTOM = 0x4682b4;
 const GROUND_COLOR = 0x228b22;
 const GROUND_HEIGHT = 20;
 
+// Camera paging — shift by 25 tiles when player reaches screen edge
+const PAGE_SHIFT_TILES = 40;
+const SCREEN_WIDTH = 800;
+const SCREEN_HEIGHT = 600;
+
+// World dimensions in pixels
+const WORLD_WIDTH = GRID_WIDTH * TILE_SIZE;
+const WORLD_HEIGHT = SCREEN_HEIGHT;
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -57,12 +66,15 @@ export class GameScene extends Phaser.Scene {
     this.grid = data.castle ?? this._emptyGrid();
     this.initialPlayers = data.players || [];
 
-    // Reset player position each time the scene starts
-    this.gridX = 20;
-    this.gridY = 15;
+    // Reset player position — start in the middle
+    this.gridX = Math.floor(GRID_WIDTH / 2);
+    this.gridY = Math.floor(GRID_HEIGHT / 2);
   }
 
   create() {
+    // Set up camera to pan across the wider world
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
     this._drawBackground();
 
     // Castle renderer
@@ -71,6 +83,9 @@ export class GameScene extends Phaser.Scene {
 
     // Local player avatar
     this._createPlayerAvatar();
+
+    // Center camera on initial player position
+    this._snapCameraToPlayer();
 
     // Keyboard input
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -133,10 +148,11 @@ export class GameScene extends Phaser.Scene {
 
     // Mobile touch movement — move toward the touch point one tile at a time
     if (this.touchActive && dx === 0 && dy === 0) {
-      const screen = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
-      // Center of the current tile
-      const cx = screen.x + TILE_SIZE / 2;
-      const cy = screen.y + TILE_SIZE / 2;
+      const world = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
+      // Convert world coords to screen coords for comparison with touch
+      const cam = this.cameras.main;
+      const cx = world.x + TILE_SIZE / 2 - cam.scrollX;
+      const cy = world.y + TILE_SIZE / 2;
 
       const diffX = this.touchTarget.x - cx;
       const diffY = this.touchTarget.y - cy;
@@ -270,12 +286,13 @@ export class GameScene extends Phaser.Scene {
 
   // --- Internal helpers ---
 
-  /** Draw sky gradient, distant hills, and layered ground. */
+  /** Draw sky gradient, distant hills, and layered ground across full world width. */
   _drawBackground() {
+    const w = WORLD_WIDTH;
     const g = this.add.graphics();
 
     // Sky gradient
-    const steps = 600 - GROUND_HEIGHT;
+    const steps = SCREEN_HEIGHT - GROUND_HEIGHT;
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       const color = Phaser.Display.Color.Interpolate.ColorWithColor(
@@ -286,36 +303,33 @@ export class GameScene extends Phaser.Scene {
       );
       const hex = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
       g.fillStyle(hex, 1);
-      g.fillRect(0, i, 800, 1);
+      g.fillRect(0, i, w, 1);
     }
 
     // Distant hills silhouette
     g.fillStyle(0x3a5a3a, 0.3);
-    this._drawHills(g, 480, 12, 0.007);
+    this._drawHills(g, 480, 12, 0.007, w);
     g.fillStyle(0x2a4a2a, 0.4);
-    this._drawHills(g, 510, 18, 0.012);
+    this._drawHills(g, 510, 18, 0.012, w);
 
     g.setDepth(-2);
 
     // Layered ground
     const groundG = this.add.graphics();
-    const groundTop = 600 - GROUND_HEIGHT;
+    const groundTop = SCREEN_HEIGHT - GROUND_HEIGHT;
 
-    // Dark earth base
     groundG.fillStyle(0x3a2a1a, 1);
-    groundG.fillRect(0, groundTop, 800, GROUND_HEIGHT);
+    groundG.fillRect(0, groundTop, w, GROUND_HEIGHT);
 
-    // Brown dirt layer
     groundG.fillStyle(0x5a4020, 1);
-    groundG.fillRect(0, groundTop, 800, 12);
+    groundG.fillRect(0, groundTop, w, 12);
 
-    // Green grass top
     groundG.fillStyle(0x4a8a30, 1);
-    groundG.fillRect(0, groundTop, 800, 4);
+    groundG.fillRect(0, groundTop, w, 4);
 
     // Grass tufts
     groundG.fillStyle(0x5aa838, 1);
-    for (let tx = 0; tx < 800; tx += 7) {
+    for (let tx = 0; tx < w; tx += 7) {
       const h = 2 + Math.sin(tx * 0.8) * 2;
       groundG.fillRect(tx, groundTop - h, 2, h);
     }
@@ -324,15 +338,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Draw a procedural hill silhouette using sine waves. */
-  _drawHills(g, baseY, amplitude, frequency) {
+  _drawHills(g, baseY, amplitude, frequency, width) {
     g.beginPath();
-    g.moveTo(0, 600);
-    for (let x = 0; x <= 800; x += 2) {
+    g.moveTo(0, SCREEN_HEIGHT);
+    for (let x = 0; x <= width; x += 2) {
       const y = baseY - Math.abs(Math.sin(x * frequency) * amplitude)
         - Math.abs(Math.sin(x * frequency * 2.3 + 1) * amplitude * 0.5);
       g.lineTo(x, y);
     }
-    g.lineTo(800, 600);
+    g.lineTo(width, SCREEN_HEIGHT);
     g.closePath();
     g.fillPath();
   }
@@ -368,12 +382,41 @@ export class GameScene extends Phaser.Scene {
 
   /** Sync the player sprite and label to the current grid position. */
   _updatePlayerPosition() {
-    const screen = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
-    const centerX = screen.x + TILE_SIZE / 2;
-    const centerY = screen.y + TILE_SIZE / 2;
+    const world = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
+    const centerX = world.x + TILE_SIZE / 2;
+    const centerY = world.y + TILE_SIZE / 2;
 
     this.playerSprite.setPosition(centerX, centerY);
     this.playerLabel.setPosition(centerX, centerY - PLAYER_SIZE);
+
+    // Check if player is near the edge of the visible area and page the camera
+    this._checkCameraPan(centerX);
+  }
+
+  /** Snap the camera so the player's page is centered. */
+  _snapCameraToPlayer() {
+    const world = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
+    const playerWorldX = world.x + TILE_SIZE / 2;
+    // Which page is the player on?
+    const pagePixels = PAGE_SHIFT_TILES * TILE_SIZE;
+    const page = Math.floor(playerWorldX / pagePixels);
+    const scrollX = page * pagePixels;
+    this.cameras.main.scrollX = Phaser.Math.Clamp(scrollX, 0, WORLD_WIDTH - SCREEN_WIDTH);
+  }
+
+  /** If the player moves past the visible screen edge, shift the camera by 25 tiles. */
+  _checkCameraPan(playerWorldX) {
+    const cam = this.cameras.main;
+    const margin = TILE_SIZE * 2; // trigger when within 2 tiles of the edge
+    const shiftPixels = PAGE_SHIFT_TILES * TILE_SIZE;
+
+    if (playerWorldX > cam.scrollX + SCREEN_WIDTH - margin) {
+      // Pan right
+      cam.scrollX = Phaser.Math.Clamp(cam.scrollX + shiftPixels, 0, WORLD_WIDTH - SCREEN_WIDTH);
+    } else if (playerWorldX < cam.scrollX + margin) {
+      // Pan left
+      cam.scrollX = Phaser.Math.Clamp(cam.scrollX - shiftPixels, 0, WORLD_WIDTH - SCREEN_WIDTH);
+    }
   }
 
   /** Return a blank grid (2D array of nulls). */

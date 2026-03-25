@@ -18,7 +18,7 @@ const BLOCK_TYPES = {
 const GRAVITY_EXEMPT = [BLOCK_TYPES.FLAG, BLOCK_TYPES.TORCH];
 
 // Grid dimensions
-const GRID_WIDTH = 40;
+const GRID_WIDTH = 120;
 const GRID_HEIGHT = 30;
 
 // Gameplay

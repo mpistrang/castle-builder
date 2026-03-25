@@ -3,10 +3,10 @@ import { generateTileTextures, tileKey, getRandomVariant } from './TileGenerator
 
 const TILE_SIZE = 20;
 
-// Game area is 800x600. Center the grid within it.
 const GRID_PIXEL_WIDTH = GRID_WIDTH * TILE_SIZE;
 const GRID_PIXEL_HEIGHT = GRID_HEIGHT * TILE_SIZE;
-const GRID_OFFSET_X = Math.floor((800 - GRID_PIXEL_WIDTH) / 2);
+// Small left margin; camera panning handles the viewport
+const GRID_OFFSET_X = 0;
 const GRID_OFFSET_Y = Math.floor((600 - GRID_PIXEL_HEIGHT) / 2);
 
 export class CastleRenderer {

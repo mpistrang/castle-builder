@@ -78,7 +78,7 @@ class Room {
 
     const player = {
       name: playerName,
-      position: { x: 20, y: 15 },
+      position: { x: Math.floor(config.GRID_WIDTH / 2), y: Math.floor(config.GRID_HEIGHT / 2) },
     };
 
     this.players.set(socketId, player);
