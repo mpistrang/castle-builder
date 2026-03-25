@@ -52,6 +52,24 @@ class SocketClient {
     this.socket.on('reconnecting', () => {
       if (this._onReconnect) this._onReconnect('reconnecting');
     });
+
+    // Keepalive: ping the server every 5 minutes to prevent Render free tier spin-down
+    this._startKeepalive();
+  }
+
+  _startKeepalive() {
+    if (this._keepaliveTimer) return;
+    const INTERVAL_MS = 5 * 60 * 1000;
+    this._keepaliveTimer = setInterval(() => {
+      fetch('/api/ping').catch(() => {});
+    }, INTERVAL_MS);
+  }
+
+  _stopKeepalive() {
+    if (this._keepaliveTimer) {
+      clearInterval(this._keepaliveTimer);
+      this._keepaliveTimer = null;
+    }
   }
 
   /** Register a callback for connection status changes: 'connected' | 'disconnected' | 'reconnecting' */
@@ -116,6 +134,7 @@ class SocketClient {
   /** Disconnect and clean up. */
   disconnect() {
     if (!this.socket) return;
+    this._stopKeepalive();
     this.socket.disconnect();
     this.socket = null;
   }

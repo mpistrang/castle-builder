@@ -21,6 +21,9 @@ const generator = new Generator();
 // Serve built client in production
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
+// Lightweight keepalive endpoint for client heartbeat
+app.get('/api/ping', (_req, res) => res.send('pong'));
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
