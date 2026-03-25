@@ -262,6 +262,17 @@ export class GameScene extends Phaser.Scene {
   // --- Socket event wiring ---
 
   _setupSocketListeners() {
+    // Show connection status and sync castle on reconnect
+    socketClient.onConnectionStatus((status) => {
+      const uiScene = this.scene.get('UIScene');
+      if (uiScene) uiScene.setConnectionStatus(status);
+    });
+
+    socketClient.on('room-joined', (data) => {
+      // Handles both initial join and reconnect — sync the castle state
+      this.updateCastle(data.castle);
+    });
+
     socketClient.on('castle-updated', (data) => {
       this.updateCastle(data.castle);
     });
@@ -406,9 +417,17 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.scrollX = Phaser.Math.Clamp(targetX, 0, WORLD_WIDTH - SCREEN_WIDTH);
   }
 
-  /** Smoothly lerp the camera toward the player's world position. */
+  /** Smoothly lerp the camera when the player is in the outer 1/3 of the screen. */
   _checkCameraPan(playerWorldX) {
     const cam = this.cameras.main;
+    const screenX = playerWorldX - cam.scrollX;
+
+    // Dead zone: middle 1/3 of the screen — no scrolling
+    const leftEdge = SCREEN_WIDTH / 3;
+    const rightEdge = (SCREEN_WIDTH * 2) / 3;
+
+    if (screenX >= leftEdge && screenX <= rightEdge) return;
+
     const targetX = playerWorldX - SCREEN_WIDTH / 2;
     const clampedTarget = Phaser.Math.Clamp(targetX, 0, WORLD_WIDTH - SCREEN_WIDTH);
     cam.scrollX += (clampedTarget - cam.scrollX) * CAMERA_LERP;

@@ -142,6 +142,13 @@ export class UIScene extends Phaser.Scene {
       if (gameScene) gameScene.brushSize = this.brushSize;
     });
 
+    // ── Connection status (bottom-left) ───────────────────
+    this.connectionText = this.add.text(MARGIN, height - MARGIN, '', {
+      fontSize: '12px',
+      fontFamily: 'monospace',
+      color: '#ff6666',
+    }).setOrigin(0, 1).setVisible(false);
+
     // ── Instruction text (bottom-center) ──────────────────
     this.add.text(width / 2, height - MARGIN, 'Arrow keys to move, Space to build/destroy', {
       fontSize: '13px',
@@ -156,6 +163,20 @@ export class UIScene extends Phaser.Scene {
   setRoomCode(code) {
     if (this.roomCodeText) {
       this.roomCodeText.setText(`Room: ${code}`);
+    }
+  }
+
+  /** Show or hide connection status. */
+  setConnectionStatus(status) {
+    if (!this.connectionText) return;
+    if (status === 'connected') {
+      this.connectionText.setVisible(false);
+    } else if (status === 'disconnected') {
+      this.connectionText.setText('Disconnected — reconnecting...');
+      this.connectionText.setVisible(true);
+    } else if (status === 'reconnecting') {
+      this.connectionText.setText('Reconnecting...');
+      this.connectionText.setVisible(true);
     }
   }
 

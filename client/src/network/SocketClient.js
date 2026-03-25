@@ -8,6 +8,10 @@ import { io } from 'socket.io-client';
 class SocketClient {
   constructor() {
     this.socket = null;
+    // Stored for auto-rejoin after reconnect
+    this._roomCode = null;
+    this._playerName = null;
+    this._onReconnect = null;
   }
 
   /**
@@ -23,18 +27,51 @@ class SocketClient {
     const url = window.location.origin;
     this.socket = io(url, {
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
+
+    // When Socket.IO reconnects after a server restart, re-join the room
+    // so the server rebuilds its socketRooms mapping for this client.
+    this.socket.on('connect', () => {
+      if (this._roomCode && this._playerName) {
+        this.socket.emit('join-room', {
+          roomCode: this._roomCode,
+          playerName: this._playerName,
+        });
+      }
+      if (this._onReconnect) this._onReconnect('connected');
+    });
+
+    this.socket.on('disconnect', () => {
+      if (this._onReconnect) this._onReconnect('disconnected');
+    });
+
+    this.socket.on('reconnecting', () => {
+      if (this._onReconnect) this._onReconnect('reconnecting');
+    });
+  }
+
+  /** Register a callback for connection status changes: 'connected' | 'disconnected' | 'reconnecting' */
+  onConnectionStatus(callback) {
+    this._onReconnect = callback;
   }
 
   /** Ask the server to create a new room. */
   createRoom(roomCode, playerName) {
     if (!this.socket) return;
+    this._roomCode = roomCode;
+    this._playerName = playerName;
     this.socket.emit('create-room', { roomCode, playerName });
   }
 
   /** Ask the server to join an existing room. */
   joinRoom(roomCode, playerName) {
     if (!this.socket) return;
+    this._roomCode = roomCode;
+    this._playerName = playerName;
     this.socket.emit('join-room', { roomCode, playerName });
   }
 
@@ -59,6 +96,8 @@ class SocketClient {
   /** Gracefully leave the current room. */
   leaveRoom() {
     if (!this.socket) return;
+    this._roomCode = null;
+    this._playerName = null;
     this.socket.emit('leave-room');
   }
 
