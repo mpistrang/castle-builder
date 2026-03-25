@@ -222,11 +222,6 @@ class Castle {
 
         this.setCell(x, y, null);
         allChanged.push({ x, y, type: null });
-
-        const cascaded = this.cascadeRemove(x, y);
-        for (const c of cascaded) {
-          allChanged.push({ x: c.x, y: c.y, type: null });
-        }
       }
     }
 

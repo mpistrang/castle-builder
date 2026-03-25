@@ -51,13 +51,20 @@ export class UIScene extends Phaser.Scene {
     const btnY = MARGIN + btnHeight / 2;
 
     this.toggleBg = this.add.rectangle(btnX, btnY, btnWidth, btnHeight, COLOR_BUILD)
+      .setStrokeStyle(3, 0xffffff)
       .setInteractive({ useHandCursor: true });
 
-    this.toggleText = this.add.text(btnX, btnY, MODE_BUILD.toUpperCase(), {
+    this.toggleText = this.add.text(btnX, btnY - 2, MODE_BUILD.toUpperCase(), {
       fontSize: '16px',
       fontFamily: 'monospace',
       fontStyle: 'bold',
       color: '#ffffff',
+    }).setOrigin(0.5);
+
+    this.toggleHint = this.add.text(btnX, btnY + 14, '(click to switch)', {
+      fontSize: '9px',
+      fontFamily: 'monospace',
+      color: '#cccccc',
     }).setOrigin(0.5);
 
     this.toggleBg.on('pointerdown', () => this._toggle());
@@ -81,9 +88,9 @@ export class UIScene extends Phaser.Scene {
 
     // ── Brush size slider (below clear button) ──────────
     this.brushSize = 1;
-    const sliderY = clearBtnY + 44;
+    const sliderY = clearBtnY + 52;
 
-    this.add.text(btnX, sliderY - 14, 'Brush Size', {
+    this.add.text(btnX, sliderY - 18, 'Brush Size', {
       fontSize: '11px',
       fontFamily: 'monospace',
       color: '#aaaaaa',
@@ -111,7 +118,7 @@ export class UIScene extends Phaser.Scene {
     this.sliderHandle = this.add.circle(sliderLeft, sliderY + 6, 8, 0xf0c060)
       .setInteractive({ useHandCursor: true, draggable: true });
 
-    this.brushSizeText = this.add.text(btnX, sliderY + 32, 'Size: 1', {
+    this.brushSizeText = this.add.text(btnX, sliderY + 34, 'Size: 1', {
       fontSize: '12px',
       fontFamily: 'monospace',
       color: '#f0c060',
@@ -195,6 +202,7 @@ export class UIScene extends Phaser.Scene {
   _updateToggleVisuals() {
     const isBuild = this.currentMode === MODE_BUILD;
     this.toggleBg.setFillStyle(isBuild ? COLOR_BUILD : COLOR_DESTROY);
-    this.toggleText.setText(this.currentMode.toUpperCase());
+    const icon = isBuild ? '+' : 'x';
+    this.toggleText.setText(`${icon} ${this.currentMode.toUpperCase()}`);
   }
 }

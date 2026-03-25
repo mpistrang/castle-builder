@@ -100,11 +100,15 @@ io.on('connection', (socket) => {
     }
 
     if (changedBlocks && changedBlocks.length > 0) {
-      await room.save();
+      // Broadcast immediately — don't wait for Redis persistence
       io.in(roomCode).emit('castle-updated', {
         castle: room.castle.getGrid(),
         action: mode || 'build',
         changedBlocks,
+      });
+      // Persist in background (fire-and-forget)
+      room.save().catch((err) => {
+        console.error(`Failed to persist room ${roomCode}:`, err.message);
       });
     }
   });
@@ -118,11 +122,13 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     room.castle.clear();
-    await room.save();
     io.in(roomCode).emit('castle-updated', {
       castle: room.castle.getGrid(),
       action: 'clear',
       changedBlocks: [],
+    });
+    room.save().catch((err) => {
+      console.error(`Failed to persist room ${roomCode}:`, err.message);
     });
   });
 

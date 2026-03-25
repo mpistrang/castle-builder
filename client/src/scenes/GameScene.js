@@ -17,10 +17,11 @@ const SKY_COLOR_BOTTOM = 0x4682b4;
 const GROUND_COLOR = 0x228b22;
 const GROUND_HEIGHT = 20;
 
-// Camera paging — shift by 25 tiles when player reaches screen edge
-const PAGE_SHIFT_TILES = 40;
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
+
+// Camera smoothing — lerp factor (0 = no movement, 1 = instant snap)
+const CAMERA_LERP = 0.08;
 
 // World dimensions in pixels
 const WORLD_WIDTH = GRID_WIDTH * TILE_SIZE;
@@ -134,6 +135,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time, _delta) {
+    // Always smooth-scroll the camera toward the player, even between moves
+    const currentWorld = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
+    this._checkCameraPan(currentWorld.x + TILE_SIZE / 2);
+
     const canMove = time - this.lastMoveTime >= MOVE_COOLDOWN_MS;
     if (!canMove) return;
 
@@ -393,30 +398,20 @@ export class GameScene extends Phaser.Scene {
     this._checkCameraPan(centerX);
   }
 
-  /** Snap the camera so the player's page is centered. */
+  /** Snap the camera so the player is centered horizontally. */
   _snapCameraToPlayer() {
     const world = this.castleRenderer.gridToScreen(this.gridX, this.gridY);
     const playerWorldX = world.x + TILE_SIZE / 2;
-    // Which page is the player on?
-    const pagePixels = PAGE_SHIFT_TILES * TILE_SIZE;
-    const page = Math.floor(playerWorldX / pagePixels);
-    const scrollX = page * pagePixels;
-    this.cameras.main.scrollX = Phaser.Math.Clamp(scrollX, 0, WORLD_WIDTH - SCREEN_WIDTH);
+    const targetX = playerWorldX - SCREEN_WIDTH / 2;
+    this.cameras.main.scrollX = Phaser.Math.Clamp(targetX, 0, WORLD_WIDTH - SCREEN_WIDTH);
   }
 
-  /** If the player moves past the visible screen edge, shift the camera by 25 tiles. */
+  /** Smoothly lerp the camera toward the player's world position. */
   _checkCameraPan(playerWorldX) {
     const cam = this.cameras.main;
-    const margin = TILE_SIZE * 2; // trigger when within 2 tiles of the edge
-    const shiftPixels = PAGE_SHIFT_TILES * TILE_SIZE;
-
-    if (playerWorldX > cam.scrollX + SCREEN_WIDTH - margin) {
-      // Pan right
-      cam.scrollX = Phaser.Math.Clamp(cam.scrollX + shiftPixels, 0, WORLD_WIDTH - SCREEN_WIDTH);
-    } else if (playerWorldX < cam.scrollX + margin) {
-      // Pan left
-      cam.scrollX = Phaser.Math.Clamp(cam.scrollX - shiftPixels, 0, WORLD_WIDTH - SCREEN_WIDTH);
-    }
+    const targetX = playerWorldX - SCREEN_WIDTH / 2;
+    const clampedTarget = Phaser.Math.Clamp(targetX, 0, WORLD_WIDTH - SCREEN_WIDTH);
+    cam.scrollX += (clampedTarget - cam.scrollX) * CAMERA_LERP;
   }
 
   /** Return a blank grid (2D array of nulls). */

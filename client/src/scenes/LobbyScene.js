@@ -143,8 +143,9 @@ export class LobbyScene extends Phaser.Scene {
       event.preventDefault();
       this.focusedField = isRoomCode ? 'playerName' : 'roomCode';
     } else if (event.keyCode === Phaser.Input.Keyboard.KeyCodes.ENTER) {
-      // Enter unfocuses and does nothing else
-      this.focusedField = null;
+      // Enter submits the JOIN form
+      this._onJoin();
+      return;
     } else if (event.key && event.key.length === 1 && value.length < maxLen) {
       // Room codes are forced uppercase, letters only
       if (isRoomCode) {

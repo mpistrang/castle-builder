@@ -94,7 +94,7 @@ class Room {
     this._lastActionTime.delete(socketId);
 
     if (this.players.size === 0) {
-      await persistence.save(this.roomCode, this.castle.grid);
+      await this.saveNow();
       Room.remove(this.roomCode);
     }
   }
@@ -146,8 +146,24 @@ class Room {
 
   /**
    * Persist the current castle state to Redis.
+   * Debounced — coalesces rapid actions into a single write.
    */
-  async save() {
+  save() {
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    return new Promise((resolve, reject) => {
+      this._saveTimer = setTimeout(() => {
+        this._saveTimer = null;
+        persistence.save(this.roomCode, this.castle.grid).then(resolve, reject);
+      }, 500);
+    });
+  }
+
+  /** Flush any pending save immediately (e.g. when last player leaves). */
+  async saveNow() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
     await persistence.save(this.roomCode, this.castle.grid);
   }
 }
